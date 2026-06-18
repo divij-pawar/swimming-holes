@@ -9,7 +9,7 @@ export function TopNav() {
       <div className="mx-auto flex h-14 max-w-screen-xl items-center gap-4 px-4">
         <Link href="/" className="flex items-center gap-2 text-stone-100 hover:text-teal-300 transition-colors">
           <Waves className="h-5 w-5 text-teal-400" />
-          <span className="font-bold text-sm tracking-tight">WaterSpots</span>
+          <span className="font-bold text-sm tracking-tight">Swimming Holes</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1 ml-2">

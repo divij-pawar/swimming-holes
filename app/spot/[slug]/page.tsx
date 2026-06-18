@@ -6,19 +6,35 @@ import { GPSCard } from '@/components/GPSCard'
 import { WeatherWidget } from '@/components/WeatherWidget'
 import { SpotCard } from '@/components/SpotCard'
 import { costColor, costLabel } from '@/lib/quality'
+import { supabase } from '@/lib/supabase'
 import type { SpotFull, SpotSummary } from '@/lib/types'
 import type { Metadata } from 'next'
 import clsx from 'clsx'
 
 export const revalidate = 86400
 
+const PUBLIC_FIELDS = [
+  'id', 'slug', 'canonical_name', 'state', 'state_abbr', 'town', 'park',
+  'lat', 'lon', 'swimming_quality', 'is_waterfall', 'is_swimming_hole',
+  'cost', 'private_property', 'rating', 'description',
+  'waterfall_type', 'water_source', 'sources', 'source_urls',
+].join(',')
+
 async function getSpot(slug: string): Promise<SpotFull | null> {
   try {
-    const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    const res = await fetch(`${base}/api/spots/${slug}`, { next: { revalidate: 86400 } })
-    if (!res.ok) return null
-    return res.json()
-  } catch {
+    const { data, error } = await supabase
+      .from('spots')
+      .select(PUBLIC_FIELDS)
+      .eq('slug', slug)
+      .single()
+    
+    if (error) {
+      console.error('[spot page getSpot]', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('[spot page getSpot] unexpected', err)
     return null
   }
 }
@@ -29,10 +45,14 @@ async function getNearby(lat: number, lon: number, excludeSlug: string): Promise
     const res = await fetch(`${base}/api/spots/nearby?lat=${lat}&lon=${lon}&radius=20&limit=6`, {
       next: { revalidate: 3600 },
     })
-    if (!res.ok) return []
+    if (!res.ok) {
+      console.error('[spot page getNearby] fetch failed:', res.status, res.statusText)
+      return []
+    }
     const json = await res.json()
     return (json.data || []).filter((s: SpotSummary) => s.slug !== excludeSlug).slice(0, 5)
-  } catch {
+  } catch (err) {
+    console.error('[spot page getNearby] error:', err)
     return []
   }
 }
@@ -46,7 +66,7 @@ export async function generateMetadata({
   const spot = await getSpot(slug)
   if (!spot) return { title: 'Not Found' }
   return {
-    title: `${spot.canonical_name} — WaterSpots`,
+    title: `${spot.canonical_name} — Swimming Holes`,
     description: spot.description?.slice(0, 160) || `${spot.canonical_name} in ${spot.state}`,
   }
 }

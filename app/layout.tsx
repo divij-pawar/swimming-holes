@@ -7,12 +7,12 @@ import { Suspense } from "react";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WaterSpots — Find Swimming Holes & Waterfalls",
+  title: "Swimming Holes — Find Swimming Holes & Waterfalls",
   description:
     "1,100+ swimming holes and waterfalls across 44 US states. Find the perfect spot near you.",
   keywords: ["swimming holes", "waterfalls", "outdoor", "nature", "hiking"],
   openGraph: {
-    title: "WaterSpots — Find Swimming Holes & Waterfalls",
+    title: "Swimming Holes — Find Swimming Holes & Waterfalls",
     description: "Discover the best swimming holes and waterfalls near you.",
     type: "website",
   },

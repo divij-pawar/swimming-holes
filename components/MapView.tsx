@@ -41,14 +41,39 @@ export default function MapView({
 
   // Init map once
   useEffect(() => {
-    if (mapRef.current || !containerRef.current) return
+    // Wait for the container to be available
+    if (!containerRef.current) return
+
+    // Do not initialize if already initialized
+    if (mapRef.current) return
+
+    // Create abort controller to cancel init if component unmounts
+    const abortController = new AbortController()
+    let isMounted = true
 
     async function init() {
+      // Abort if unmounted or component unmounted before we got here
+      if (abortController.signal.aborted || !isMounted) return
+      if (!containerRef.current) return
+
+      // Check if Leaflet already has a map on this DOM element
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((containerRef.current as any)._leaflet_id != null) return
+
       const L = (await import('leaflet')).default
+      
+      // Check again after async import
+      if (abortController.signal.aborted || !isMounted || !containerRef.current) return
+
       await import('leaflet/dist/leaflet.css')
       await import('leaflet.markercluster')
       await import('leaflet.markercluster/dist/MarkerCluster.css')
       await import('leaflet.markercluster/dist/MarkerCluster.Default.css')
+
+      // Final check before creating map
+      if (abortController.signal.aborted || !isMounted || !containerRef.current) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((containerRef.current as any)._leaflet_id != null) return
 
       const map = L.map(containerRef.current!, {
         center: [39.5, -98.35],
@@ -82,6 +107,8 @@ export default function MapView({
     init()
 
     return () => {
+      isMounted = false
+      abortController.abort()
       mapRef.current?.remove()
       mapRef.current = null
     }

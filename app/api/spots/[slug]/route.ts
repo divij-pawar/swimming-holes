@@ -48,6 +48,10 @@ export async function GET(
       .eq('slug', slug)
       .single()
 
+    if (error) {
+      console.error(`[/api/spots/${slug}] DB error:`, error)
+    }
+
     if (error || !data) {
       // Don't reveal whether it's a DB error vs. not found
       return NextResponse.json(

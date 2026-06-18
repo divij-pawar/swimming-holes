@@ -1,4 +1,4 @@
-# WaterSpots
+# Swimming Holes
 
 A Next.js web app for discovering swimming holes and waterfalls across the US.
 

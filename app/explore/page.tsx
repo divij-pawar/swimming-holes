@@ -57,11 +57,17 @@ function ExploreInner() {
     fetch(buildApiUrl(0))
       .then((r) => r.json())
       .then((json: SpotsResponse) => {
-        setSpots(json.data)
-        setTotal(json.total)
+        if (json.error) {
+          console.error('API error:', json.error)
+          return
+        }
+        setSpots(json.data ?? [])
+        setTotal(json.total ?? 0)
         setHasMore(json.has_more ?? false)
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Failed to fetch spots:', err)
+      })
       .finally(() => setLoading(false))
   }, [searchParams.toString()]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -73,11 +79,17 @@ function ExploreInner() {
     fetch(buildApiUrl(nextOffset))
       .then((r) => r.json())
       .then((json: SpotsResponse) => {
-        setSpots((prev) => [...prev, ...json.data])
+        if (json.error) {
+          console.error('API error:', json.error)
+          return
+        }
+        setSpots((prev) => [...prev, ...(json.data ?? [])])
         setOffset(nextOffset)
         setHasMore(json.has_more ?? false)
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Failed to load more spots:', err)
+      })
       .finally(() => setLoadingMore(false))
   }, [loadingMore, hasMore, lat, offset, buildApiUrl])
 

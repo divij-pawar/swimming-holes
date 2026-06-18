@@ -53,7 +53,7 @@ export async function generateMetadata({
   const { abbr } = await params
   const name = STATE_NAMES[abbr.toLowerCase()] || abbr.toUpperCase()
   return {
-    title: `${name} Swimming Holes & Waterfalls — WaterSpots`,
+    title: `${name} Swimming Holes & Waterfalls — Swimming Holes`,
     description: `Find swimming holes and waterfalls in ${name}. Explore spots with swimming quality ratings, GPS coordinates, and more.`,
   }
 }
