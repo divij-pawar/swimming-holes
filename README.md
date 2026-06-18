@@ -1,8 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WaterSpots
 
-## Getting Started
+A Next.js web app for discovering swimming holes and waterfalls across the US.
 
-First, run the development server:
+**1,145 spots · 44 states · GPS navigation · Swimming quality ratings · Weather forecasts**
+
+## Quick Start
+
+First, run the development server (requires `.env.local` with Supabase credentials):
 
 ```bash
 npm run dev
