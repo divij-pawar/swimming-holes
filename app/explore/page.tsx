@@ -42,7 +42,8 @@ function ExploreInner() {
       params.set('limit', '20')
       // If near-me, use nearby endpoint
       if (lat != null && lon != null) {
-        return `/api/spots/nearby?lat=${lat}&lon=${lon}&radius=${radius}&limit=50`
+        const sort = searchParams.get('sort') || 'rating'
+        return `/api/spots/nearby?lat=${lat}&lon=${lon}&radius=${radius}&limit=50&sort=${sort}`
       }
       return `/api/spots?${params.toString()}`
     },
@@ -54,19 +55,28 @@ function ExploreInner() {
     setLoading(true)
     setOffset(0)
     setSpots([])
-    fetch(buildApiUrl(0))
-      .then((r) => r.json())
+    const url = buildApiUrl(0)
+    fetch(url)
+      .then((r) => {
+        console.log('Initial fetch response status:', r.status, 'from URL:', url)
+        return r.json()
+      })
       .then((json: SpotsResponse) => {
         if (json.error) {
-          console.error('API error:', json.error)
+          console.error('API error from initial fetch:', json.error)
           return
         }
-        setSpots(json.data ?? [])
+        // Deduplicate by id to prevent duplicate key warnings
+        const uniqueSpots = Array.from(
+          new Map((json.data ?? []).map(s => [s.id, s])).values()
+        )
+        console.log('Initial fetch success: got', uniqueSpots.length, 'unique spots')
+        setSpots(uniqueSpots)
         setTotal(json.total ?? 0)
         setHasMore(json.has_more ?? false)
       })
       .catch((err) => {
-        console.error('Failed to fetch spots:', err)
+        console.error('Failed to fetch spots from', url, ':', err)
       })
       .finally(() => setLoading(false))
   }, [searchParams.toString()]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -76,19 +86,28 @@ function ExploreInner() {
     if (loadingMore || !hasMore || lat != null) return
     const nextOffset = offset + 20
     setLoadingMore(true)
-    fetch(buildApiUrl(nextOffset))
-      .then((r) => r.json())
+    const url = buildApiUrl(nextOffset)
+    fetch(url)
+      .then((r) => {
+        console.log('loadMore response status:', r.status, 'from URL:', url)
+        return r.json()
+      })
       .then((json: SpotsResponse) => {
         if (json.error) {
-          console.error('API error:', json.error)
+          console.error('API error from', url, ':', json.error)
           return
         }
-        setSpots((prev) => [...prev, ...(json.data ?? [])])
+        setSpots((prev) => {
+          // Deduplicate by id when merging with existing spots
+          const existingIds = new Set(prev.map(s => s.id))
+          const newSpots = (json.data ?? []).filter(s => !existingIds.has(s.id))
+          return [...prev, ...newSpots]
+        })
         setOffset(nextOffset)
         setHasMore(json.has_more ?? false)
       })
       .catch((err) => {
-        console.error('Failed to load more spots:', err)
+        console.error('Failed to load more spots from', url, ':', err)
       })
       .finally(() => setLoadingMore(false))
   }, [loadingMore, hasMore, lat, offset, buildApiUrl])
@@ -174,7 +193,7 @@ function ExploreInner() {
 
           {spots.map((spot) => (
             <div
-              key={spot.slug}
+              key={spot.id}
               ref={(el) => {
                 if (el) cardRefs.current.set(spot.slug, el)
                 else cardRefs.current.delete(spot.slug)

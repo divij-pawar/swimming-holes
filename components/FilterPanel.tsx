@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useCallback } from 'react'
-import { X, SlidersHorizontal } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { X, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import clsx from 'clsx'
 
 const QUALITY_OPTIONS = ['Outstanding', 'Excellent', 'Good', 'Yes', 'Fair', 'Poor', 'No']
@@ -27,6 +27,7 @@ export function FilterPanel({ className }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [stateDropdownOpen, setStateDropdownOpen] = useState(false)
 
   const update = useCallback(
     (key: string, value: string | null) => {
@@ -53,10 +54,24 @@ export function FilterPanel({ className }: Props) {
     [searchParams, update]
   )
 
+  const toggleState = useCallback(
+    (abbr: string) => {
+      const current = (searchParams.get('state') || '').split(',').filter(Boolean)
+      const next = current.includes(abbr)
+        ? current.filter((s) => s !== abbr)
+        : [...current, abbr]
+      update('state', next.join(',') || null)
+      // Keep dropdown open for multi-select convenience
+    },
+    [searchParams, update]
+  )
+
   const state = searchParams.get('state') || ''
+  const states = state.split(',').filter(Boolean)
   const type = searchParams.get('type') || 'both'
   const quality = (searchParams.get('quality') || '').split(',').filter(Boolean)
   const cost = searchParams.get('cost') || 'any'
+  const sort = searchParams.get('sort') || 'rating'
   const publicOnly = searchParams.get('public_only') === 'true'
   const hasNearMe = searchParams.has('lat') && searchParams.has('lon')
   const radius = searchParams.get('radius') || '25'
@@ -119,17 +134,36 @@ export function FilterPanel({ className }: Props) {
 
       {/* State */}
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-stone-400 uppercase tracking-wide">State</label>
-        <select
-          value={state}
-          onChange={(e) => update('state', e.target.value || null)}
-          className="w-full rounded-lg border border-stone-600 bg-stone-800 px-3 py-2 text-stone-100 focus:border-teal-400 focus:outline-none"
-        >
-          <option value="">All states</option>
-          {US_STATES.map(([abbr, name]) => (
-            <option key={abbr} value={abbr}>{name}</option>
-          ))}
-        </select>
+        <label className="mb-1.5 block text-xs font-medium text-stone-400 uppercase tracking-wide">States</label>
+        <div className="relative">
+          <button
+            onClick={() => setStateDropdownOpen(!stateDropdownOpen)}
+            className="w-full flex items-center justify-between rounded-lg border border-stone-600 bg-stone-800 px-3 py-2 text-stone-100 hover:border-stone-500 focus:border-teal-400 focus:outline-none"
+          >
+            <span className="text-sm">{states.length === 0 ? 'All states' : `${states.length} selected`}</span>
+            <ChevronDown className={clsx('h-4 w-4 transition-transform', stateDropdownOpen && 'rotate-180')} />
+          </button>
+          
+          {stateDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 max-h-64 overflow-y-auto rounded-lg border border-stone-600 bg-stone-800 shadow-lg z-10">
+              <div className="p-2 space-y-1">
+                {US_STATES.map(([abbr, name]) => (
+                  <label key={abbr} className="flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 hover:bg-stone-700/50">
+                    <input
+                      type="checkbox"
+                      checked={states.includes(abbr)}
+                      onChange={() => toggleState(abbr)}
+                      className="h-3.5 w-3.5 rounded border-stone-600 bg-stone-800 accent-teal-400"
+                    />
+                    <span className={clsx('text-xs', states.includes(abbr) ? 'text-stone-100' : 'text-stone-400')}>
+                      {abbr} — {name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Type */}
@@ -150,6 +184,37 @@ export function FilterPanel({ className }: Props) {
               {t === 'both' ? 'All' : t}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Sort */}
+      <div>
+        <label className="mb-1.5 block text-xs font-medium text-stone-400 uppercase tracking-wide">Sort</label>
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => update('sort', null)}
+            className={clsx(
+              'flex-1 rounded-lg border px-2 py-1.5 text-xs transition-colors',
+              sort === 'rating' || !sort
+                ? 'border-teal-400/60 bg-teal-500/20 text-teal-300'
+                : 'border-stone-600 bg-stone-800 text-stone-400 hover:border-stone-500 hover:text-stone-200'
+            )}
+          >
+            Highest Rated
+          </button>
+          {hasNearMe && (
+            <button
+              onClick={() => update('sort', 'distance')}
+              className={clsx(
+                'flex-1 rounded-lg border px-2 py-1.5 text-xs transition-colors',
+                sort === 'distance'
+                  ? 'border-teal-400/60 bg-teal-500/20 text-teal-300'
+                  : 'border-stone-600 bg-stone-800 text-stone-400 hover:border-stone-500 hover:text-stone-200'
+              )}
+            >
+              Closest
+            </button>
+          )}
         </div>
       </div>
 

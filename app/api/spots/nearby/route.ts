@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { validateFloat, validateInt, ValidationError } from '@/lib/validate'
+import { validateFloat, validateInt, validateEnum, ValidationError } from '@/lib/validate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || ''
+const SORT_VALUES = ['rating', 'distance'] as const
 
 const PUBLIC_FIELDS = [
   'id', 'slug', 'canonical_name', 'state', 'state_abbr', 'town', 'park',
@@ -51,6 +52,7 @@ export async function GET(req: NextRequest) {
     const lon = validateFloat(sp.get('lon'), 'lon', { min: -180, max: 180 })
     const radius = validateInt(sp.get('radius'), 'radius', { min: 1, max: 150, defaultValue: 25 })
     const limit = validateInt(sp.get('limit'), 'limit', { min: 1, max: 50, defaultValue: 20 })
+    const sort = validateEnum(sp.get('sort'), 'sort', SORT_VALUES, 'rating')
 
     const { data, error } = await supabase
       .from('spots')
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    type RawSpot = { lat: number; lon: number; [key: string]: unknown }
+    type RawSpot = { lat: number; lon: number; rating: number | null; [key: string]: unknown }
     const nearby = ((data ?? []) as RawSpot[])
       .map((spot) => ({
         ...spot,
@@ -74,7 +76,15 @@ export async function GET(req: NextRequest) {
         is_approximate: false,
       }))
       .filter((s) => s.dist_km <= radius)
-      .sort((a, b) => a.dist_km - b.dist_km)
+      .sort((a, b) => {
+        if (sort === 'distance') {
+          return a.dist_km - b.dist_km
+        } else {
+          // Sort by rating (highest first), then by distance
+          const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0)
+          return ratingDiff !== 0 ? ratingDiff : a.dist_km - b.dist_km
+        }
+      })
       .slice(0, limit)
 
     return NextResponse.json(

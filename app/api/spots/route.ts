@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import {
   validateInt,
-  validateState,
+  validateStates,
   validateQuality,
   validateEnum,
   validateSearchQuery,
@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || ''
 const TYPE_VALUES = ['swimming', 'waterfall', 'both'] as const
 const COST_VALUES = ['free', 'paid', 'any'] as const
+const SORT_VALUES = ['rating', 'distance'] as const
 
 // Fields returned to clients — never SELECT * to avoid leaking internal fields
 const PUBLIC_FIELDS = [
@@ -46,10 +47,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const q = validateSearchQuery(sp.get('q'))
-    const state = validateState(sp.get('state'))
+    const states = validateStates(sp.get('state'))
     const type = validateEnum(sp.get('type'), 'type', TYPE_VALUES, 'both')
     const quality = validateQuality(sp.get('quality'))
     const cost = validateEnum(sp.get('cost'), 'cost', COST_VALUES, 'any')
+    const sort = validateEnum(sp.get('sort'), 'sort', SORT_VALUES, 'rating')
     const publicOnly = sp.get('public_only') === 'true'
     const offset = validateInt(sp.get('offset'), 'offset', { min: 0, max: 10_000 })
     // Cap at 50 per page — harder to dump full DB (12 pages instead of 5)
@@ -62,7 +64,7 @@ export async function GET(req: NextRequest) {
     if (q) {
       query = query.textSearch('search_vector', q, { type: 'websearch', config: 'english' })
     }
-    if (state) query = query.eq('state_abbr', state)
+    if (states.length > 0) query = query.in('state_abbr', states)
     if (type === 'swimming') query = query.eq('is_swimming_hole', true)
     if (type === 'waterfall') query = query.eq('is_waterfall', true)
     if (quality.length > 0) query = query.in('swimming_quality', quality)
@@ -73,14 +75,26 @@ export async function GET(req: NextRequest) {
     }
     if (publicOnly) query = query.or('private_property.is.null,private_property.eq.false')
 
-    query = query
-      .order('rating', { ascending: false, nullsFirst: false })
-      .range(offset, offset + limit - 1)
+    // Apply sorting
+    if (sort === 'distance') {
+      // Distance sorting requires lat/lon from query params (handled client-side in near-me)
+      query = query.order('lat', { ascending: false })
+    } else {
+      query = query.order('rating', { ascending: false, nullsFirst: false })
+    }
+
+    query = query.range(offset, offset + limit - 1)
 
     const { data, count, error } = await query
 
     if (error) {
-      console.error('[/api/spots]', error)
+      console.error('[/api/spots] Supabase error:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        params: { states, type, quality, cost, sort, offset, limit },
+      })
       return NextResponse.json(
         { error: 'Failed to fetch spots' },
         { status: 500, headers: corsHeaders(origin) }

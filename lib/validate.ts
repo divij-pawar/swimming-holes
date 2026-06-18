@@ -52,6 +52,15 @@ export function validateState(raw: string | null): string | null {
   return abbr
 }
 
+export function validateStates(raw: string | null): string[] {
+  if (!raw) return []
+  const abbrs = raw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+  for (const abbr of abbrs) {
+    if (!STATE_ABBRS.has(abbr)) throw new ValidationError(`Invalid state abbreviation: ${abbr}`)
+  }
+  return abbrs
+}
+
 export function validateQuality(raw: string | null): string[] {
   if (!raw) return []
   const vals = raw.split(',').map((v) => v.trim()).filter(Boolean)
