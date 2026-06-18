@@ -48,7 +48,8 @@ export interface StateMeta {
 }
 
 export interface SpotsResponse {
-  data: SpotSummary[]
-  total: number
-  has_more: boolean
+  data?: SpotSummary[]
+  total?: number
+  has_more?: boolean
+  error?: string
 }
